@@ -109,7 +109,7 @@ func strtoi(p *[]rune) (int, error) {
 	neg := false
 	for c == ' ' {
 		if len(s) == 0 {
-			errorAt(s, "parse error at %c", c)
+			return -1, fmt.Errorf("parse error at %c", c)
 		}
 		c = s[0]
 		s = s[1:]
@@ -117,13 +117,13 @@ func strtoi(p *[]rune) (int, error) {
 	if c == '-' {
 		neg = true
 		if len(s) == 0 {
-			errorAt(s, "parse error at %c", c)
+			return -1, fmt.Errorf("parse error at %c", c)
 		}
 		c = s[0]
 		s = s[1:]
 	}
 	if !isDigit(c) {
-		errorAt(s, "parse error at %c", c)
+		return -1, fmt.Errorf("parse error at %c", c)
 	}
 	acc := 0
 	for {
