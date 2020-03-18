@@ -20,7 +20,26 @@ type token struct {
 	str  []rune
 }
 
-var t = &token{}
+var (
+	t    = &token{}
+	inpt = ""
+)
+
+func errorAt(loc []rune, f string, r ...rune) {
+	p := len(loc) - len(inpt)
+	e := fmt.Errorf(inpt)
+	fmt.Fprintln(os.Stderr, e)
+	e = fmt.Errorf("%*s", p, "")
+	fmt.Fprint(os.Stderr, e)
+	fmt.Fprintln(os.Stderr, "^ ")
+	if len(r) == 0 {
+		e = fmt.Errorf(f)
+	} else {
+		e = fmt.Errorf(f, r[0])
+	}
+	fmt.Fprintln(os.Stderr, e)
+	os.Exit(1)
+}
 
 func comsume(op rune) bool {
 	if c := t.str[0]; t.kind != tkReserved || c != op {
@@ -32,18 +51,14 @@ func comsume(op rune) bool {
 
 func expect(op rune) {
 	if c := t.str[0]; t.kind != tkReserved || c != op {
-		err := fmt.Errorf("'%c' is not '%c'", c, op)
-		fmt.Println(err)
-		os.Exit(1)
+		errorAt(t.str, "expected '%c'", op)
 	}
 	t = t.next
 }
 
 func expectNumber() int {
 	if t.kind != tkNum {
-		err := fmt.Errorf("this is not number")
-		fmt.Println(err)
-		os.Exit(1)
+		errorAt(t.str, "expected a number")
 	}
 	v := t.val
 	t = t.next
@@ -94,7 +109,7 @@ func strtoi(p *[]rune) (int, error) {
 	neg := false
 	for c == ' ' {
 		if len(s) == 0 {
-			return -1, fmt.Errorf("parse error at %c", c)
+			errorAt(s, "parse error at %c", c)
 		}
 		c = s[0]
 		s = s[1:]
@@ -102,13 +117,13 @@ func strtoi(p *[]rune) (int, error) {
 	if c == '-' {
 		neg = true
 		if len(s) == 0 {
-			return -1, fmt.Errorf("parse error at %c", c)
+			errorAt(s, "parse error at %c", c)
 		}
 		c = s[0]
 		s = s[1:]
 	}
 	if !isDigit(c) {
-		return -1, fmt.Errorf("parse error at %c", c)
+		errorAt(s, "parse error at %c", c)
 	}
 	acc := 0
 	for {
@@ -147,16 +162,12 @@ func tokenize(p []rune) *token {
 			cur = newToken(tkNum, cur, p)
 			v, err := strtoi(&p)
 			if err != nil {
-				err := fmt.Errorf("parse error")
-				fmt.Println(err)
-				os.Exit(1)
+				errorAt(p, "parse error at %c", c)
 			}
 			cur.val = v
 			continue
 		}
-		e := fmt.Errorf("cannot tokenize")
-		fmt.Println(e)
-		os.Exit(1)
+		errorAt(p, "cannot tokenize %c", c)
 	}
 	newToken(tkEOF, cur, p)
 	return h.next
@@ -165,10 +176,11 @@ func tokenize(p []rune) *token {
 func main() {
 	if len(os.Args) != 2 {
 		e := fmt.Errorf("%s: invalid number of arguments", os.Args[0])
-		fmt.Println(e)
+		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
 	}
 	s := os.Args[1]
+	inpt = s
 	t = tokenize([]rune(s))
 	fmt.Printf(".intel_syntax noprefix\n")
 	fmt.Printf(".global main\n")
