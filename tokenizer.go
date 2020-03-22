@@ -41,7 +41,7 @@ func errorAt(loc []rune, f string, r ...rune) {
 	os.Exit(1)
 }
 
-func comsume(op rune) bool {
+func consume(op rune) bool {
 	if c := t.str[0]; t.kind != tkReserved || c != op {
 		return false
 	}

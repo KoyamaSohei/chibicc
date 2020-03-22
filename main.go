@@ -19,7 +19,7 @@ func main() {
 	fmt.Printf("main:\n")
 	fmt.Printf("  mov rax, %d\n", expectNumber())
 	for !atEOF() {
-		if comsume('+') {
+		if consume('+') {
 			fmt.Printf("  add rax, %d\n", expectNumber())
 			continue
 		}
