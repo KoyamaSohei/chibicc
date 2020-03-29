@@ -13,6 +13,7 @@ const (
 	ndNe
 	ndLt
 	ndLe
+	ndRet
 	ndNum
 )
 
@@ -22,6 +23,10 @@ type node struct {
 	lhs  *node
 	rhs  *node
 	val  int
+}
+
+func newUnary(k nodeKind, n *node) *node {
+	return &node{kind: k, lhs: n}
 }
 
 func newBinary(k nodeKind, lhs *node, rhs *node) *node {
@@ -112,6 +117,11 @@ func expr() *node {
 }
 
 func stmt() *node {
+	if consume([]rune("return")) {
+		n := newUnary(ndRet, expr())
+		expect([]rune(";"))
+		return n
+	}
 	n := expr()
 	expect([]rune(";"))
 	return n
@@ -128,8 +138,14 @@ func program() *node {
 }
 
 func gen(n *node) {
-	if n.kind == ndNum {
+	switch n.kind {
+	case ndNum:
 		fmt.Printf("  push %d\n", n.val)
+		return
+	case ndRet:
+		gen(n.lhs)
+		fmt.Printf("  pop rax\n")
+		fmt.Printf("  ret\n")
 		return
 	}
 	gen(n.lhs)

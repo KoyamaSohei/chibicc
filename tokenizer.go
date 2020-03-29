@@ -97,6 +97,14 @@ func isDigit(c rune) bool {
 	return c >= '0' && c <= '9'
 }
 
+func isAlpha(c rune) bool {
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_'
+}
+
+func isAlNum(c rune) bool {
+	return isAlpha(c) || isDigit(c)
+}
+
 func strtoi(p *[]rune) (int, error) {
 	s := *p
 	c := s[0]
@@ -171,6 +179,11 @@ func tokenize(p []rune) *token {
 		c := p[0]
 		if c == ' ' {
 			p = p[1:]
+			continue
+		}
+		if startWith(p, []rune("return")) && !isAlNum(p[6]) {
+			cur = newToken(tkReserved, cur, p, 6)
+			p = p[6:]
 			continue
 		}
 		if startWith(p, []rune("==")) || startWith(p, []rune("!=")) || startWith(p, []rune("<=")) || startWith(p, []rune(">=")) {
