@@ -94,30 +94,7 @@ func startWith(str []rune, op []rune) bool {
 }
 
 func isDigit(c rune) bool {
-	switch c {
-	case '0':
-		fallthrough
-	case '1':
-		fallthrough
-	case '2':
-		fallthrough
-	case '3':
-		fallthrough
-	case '4':
-		fallthrough
-	case '5':
-		fallthrough
-	case '6':
-		fallthrough
-	case '7':
-		fallthrough
-	case '8':
-		fallthrough
-	case '9':
-		return true
-	default:
-		return false
-	}
+	return c >= '0' && c <= '9'
 }
 
 func strtoi(p *[]rune) (int, error) {
