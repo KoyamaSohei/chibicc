@@ -36,13 +36,23 @@ func primary() *node {
 	return newNumber(expectNumber())
 }
 
+func unary() *node {
+	if consume('+') {
+		return unary()
+	}
+	if consume('-') {
+		return newBinary(ndSub, newNumber(0), unary())
+	}
+	return primary()
+}
+
 func mul() *node {
-	n := primary()
+	n := unary()
 	for {
 		if consume('*') {
-			n = newBinary(ndMul, n, primary())
+			n = newBinary(ndMul, n, unary())
 		} else if consume('/') {
-			n = newBinary(ndDiv, n, primary())
+			n = newBinary(ndDiv, n, unary())
 		} else {
 			return n
 		}
