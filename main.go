@@ -20,7 +20,6 @@ func main() {
 	fmt.Printf("main:\n")
 	for s := n; s != nil; s = s.next {
 		gen(s)
-		fmt.Printf("  pop rax\n")
 	}
 	fmt.Printf("  ret\n")
 	os.Exit(0)

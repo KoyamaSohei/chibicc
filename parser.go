@@ -14,6 +14,7 @@ const (
 	ndLt
 	ndLe
 	ndRet
+	ndExprStmt
 	ndNum
 )
 
@@ -122,7 +123,7 @@ func stmt() *node {
 		expect([]rune(";"))
 		return n
 	}
-	n := expr()
+	n := newUnary(ndExprStmt, expr())
 	expect([]rune(";"))
 	return n
 }
@@ -141,6 +142,10 @@ func gen(n *node) {
 	switch n.kind {
 	case ndNum:
 		fmt.Printf("  push %d\n", n.val)
+		return
+	case ndExprStmt:
+		gen(n.lhs)
+		fmt.Printf("  add rsp, 8\n")
 		return
 	case ndRet:
 		gen(n.lhs)
