@@ -146,6 +146,25 @@ func strtoi(p *[]rune) (int, error) {
 	return acc, nil
 }
 
+func isReserved(c rune) bool {
+	switch c {
+	case '+':
+		fallthrough
+	case '-':
+		fallthrough
+	case '*':
+		fallthrough
+	case '/':
+		fallthrough
+	case '(':
+		fallthrough
+	case ')':
+		return true
+	default:
+		return false
+	}
+}
+
 func tokenize(p []rune) *token {
 	var h token
 	h.next = nil
@@ -156,7 +175,7 @@ func tokenize(p []rune) *token {
 			p = p[1:]
 			continue
 		}
-		if c == '+' || c == '-' {
+		if isReserved(c) {
 			cur = newToken(tkReserved, cur, p)
 			p = p[1:]
 			continue
