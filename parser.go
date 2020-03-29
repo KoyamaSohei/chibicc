@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 type nodeKind int
 
@@ -13,8 +16,10 @@ const (
 	ndNe
 	ndLt
 	ndLe
+	ndAssign
 	ndRet
 	ndExprStmt
+	ndLvar
 	ndNum
 )
 
@@ -23,6 +28,7 @@ type node struct {
 	next *node
 	lhs  *node
 	rhs  *node
+	name rune
 	val  int
 }
 
@@ -38,11 +44,19 @@ func newNumber(v int) *node {
 	return &node{kind: ndNum, val: v}
 }
 
+func newLvar(n rune) *node {
+	return &node{kind: ndLvar, name: n}
+}
+
 func primary() *node {
 	if consume([]rune("(")) {
 		n := expr()
 		expect([]rune(")"))
 		return n
+	}
+
+	if tok := consumeIdent(); tok != nil {
+		return newLvar(tok.str[0])
 	}
 	return newNumber(expectNumber())
 }
@@ -113,8 +127,16 @@ func equality() *node {
 	}
 }
 
+func assign() *node {
+	n := equality()
+	if consume([]rune("=")) {
+		n = newBinary(ndAssign, n, assign())
+	}
+	return n
+}
+
 func expr() *node {
-	return equality()
+	return assign()
 }
 
 func stmt() *node {
@@ -138,6 +160,29 @@ func program() *node {
 	return h.next
 }
 
+func genAddr(n *node) {
+	if n.kind != ndLvar {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("not an lvalue"))
+		os.Exit(1)
+	}
+	o := (int)(n.name-'a') * 8
+	fmt.Printf("  lea rax, [rbp-%d]\n", o)
+	fmt.Printf("  push rax\n")
+}
+
+func load() {
+	fmt.Printf("  pop rax\n")
+	fmt.Printf("  mov rax, [rax]\n")
+	fmt.Printf("  push rax\n")
+}
+
+func store() {
+	fmt.Printf("  pop rdi\n")
+	fmt.Printf("  pop rax\n")
+	fmt.Printf("  mov [rax], rdi\n")
+	fmt.Printf("  push rdi\n")
+}
+
 func gen(n *node) {
 	switch n.kind {
 	case ndNum:
@@ -147,10 +192,19 @@ func gen(n *node) {
 		gen(n.lhs)
 		fmt.Printf("  add rsp, 8\n")
 		return
+	case ndLvar:
+		genAddr(n)
+		load()
+		return
+	case ndAssign:
+		genAddr(n.lhs)
+		gen(n.rhs)
+		store()
+		return
 	case ndRet:
 		gen(n.lhs)
 		fmt.Printf("  pop rax\n")
-		fmt.Printf("  ret\n")
+		fmt.Printf("  jmp .Lreturn\n")
 		return
 	}
 	gen(n.lhs)

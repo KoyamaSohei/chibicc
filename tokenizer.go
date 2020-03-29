@@ -10,6 +10,7 @@ type tokenKind int
 
 const (
 	tkReserved tokenKind = iota
+	tkIdent
 	tkNum
 	tkEOF
 )
@@ -55,6 +56,15 @@ func consume(op []rune) bool {
 	}
 	t = t.next
 	return true
+}
+
+func consumeIdent() *token {
+	if t.kind != tkIdent {
+		return nil
+	}
+	tt := t
+	t = t.next
+	return tt
 }
 
 func expect(op []rune) {
@@ -165,6 +175,8 @@ func isReserved(c rune) bool {
 	case '>':
 		fallthrough
 	case ';':
+		fallthrough
+	case '=':
 		return true
 	default:
 		return false
@@ -193,6 +205,11 @@ func tokenize(p []rune) *token {
 		}
 		if isReserved(c) {
 			cur = newToken(tkReserved, cur, p, 1)
+			p = p[1:]
+			continue
+		}
+		if isAlpha(c) {
+			cur = newToken(tkIdent, cur, p, 1)
 			p = p[1:]
 			continue
 		}
