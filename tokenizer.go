@@ -42,7 +42,10 @@ func errorAt(loc []rune, f string, r ...rune) {
 }
 
 func consume(op rune) bool {
-	if c := t.str[0]; t.kind != tkReserved || c != op {
+	if t.kind != tkReserved {
+		return false
+	}
+	if c := t.str[0]; c != op {
 		return false
 	}
 	t = t.next
