@@ -18,6 +18,7 @@ const (
 
 type node struct {
 	kind nodeKind
+	next *node
 	lhs  *node
 	rhs  *node
 	val  int
@@ -108,6 +109,22 @@ func equality() *node {
 
 func expr() *node {
 	return equality()
+}
+
+func stmt() *node {
+	n := expr()
+	expect([]rune(";"))
+	return n
+}
+
+func program() *node {
+	var h node
+	cur := &h
+	for !atEOF() {
+		cur.next = stmt()
+		cur = cur.next
+	}
+	return h.next
 }
 
 func gen(n *node) {

@@ -14,12 +14,14 @@ func main() {
 	s := os.Args[1]
 	inpt = s
 	t = tokenize([]rune(s))
-	n := expr()
+	n := program()
 	fmt.Printf(".intel_syntax noprefix\n")
 	fmt.Printf(".global main\n")
 	fmt.Printf("main:\n")
-	gen(n)
-	fmt.Printf("  pop rax\n")
+	for s := n; s != nil; s = s.next {
+		gen(s)
+		fmt.Printf("  pop rax\n")
+	}
 	fmt.Printf("  ret\n")
 	os.Exit(0)
 }
