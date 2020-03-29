@@ -14,18 +14,12 @@ func main() {
 	s := os.Args[1]
 	inpt = s
 	t = tokenize([]rune(s))
+	n := expr()
 	fmt.Printf(".intel_syntax noprefix\n")
 	fmt.Printf(".global main\n")
 	fmt.Printf("main:\n")
-	fmt.Printf("  mov rax, %d\n", expectNumber())
-	for !atEOF() {
-		if consume('+') {
-			fmt.Printf("  add rax, %d\n", expectNumber())
-			continue
-		}
-		expect('-')
-		fmt.Printf("  sub rax, %d\n", expectNumber())
-	}
+	gen(n)
+	fmt.Printf("  pop rax\n")
 	fmt.Printf("  ret\n")
 	os.Exit(0)
 }
