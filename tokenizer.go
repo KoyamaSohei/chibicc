@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 )
 
 type tokenKind int
@@ -18,6 +19,7 @@ type token struct {
 	next *token
 	val  int
 	str  []rune
+	len  int
 }
 
 var (
@@ -25,7 +27,7 @@ var (
 	inpt = ""
 )
 
-func errorAt(loc []rune, f string, r ...rune) {
+func errorAt(loc []rune, f string, r ...[]rune) {
 	p := len(loc) - len(inpt)
 	e := fmt.Errorf(inpt)
 	fmt.Fprintln(os.Stderr, e)
@@ -35,26 +37,32 @@ func errorAt(loc []rune, f string, r ...rune) {
 	if len(r) == 0 {
 		e = fmt.Errorf(f)
 	} else {
-		e = fmt.Errorf(f, r[0])
+		e = fmt.Errorf(f, string(r[0]))
 	}
 	fmt.Fprintln(os.Stderr, e)
 	os.Exit(1)
 }
 
-func consume(op rune) bool {
+func consume(op []rune) bool {
 	if t.kind != tkReserved {
 		return false
 	}
-	if c := t.str[0]; c != op {
+	if len(op) != t.len {
+		return false
+	}
+	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
 		return false
 	}
 	t = t.next
 	return true
 }
 
-func expect(op rune) {
-	if c := t.str[0]; t.kind != tkReserved || c != op {
-		errorAt(t.str, "expected '%c'", op)
+func expect(op []rune) {
+	if t.kind != tkReserved {
+		errorAt(t.str, "expected '%s'", op)
+	}
+	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
+		errorAt(t.str, "expected '%s'", op)
 	}
 	t = t.next
 }
@@ -72,10 +80,17 @@ func atEOF() bool {
 	return t.kind == tkEOF
 }
 
-func newToken(k tokenKind, cur *token, str []rune) *token {
-	p := &token{kind: k, str: str}
+func newToken(k tokenKind, cur *token, str []rune, len int) *token {
+	p := &token{kind: k, str: str, len: len}
 	cur.next = p
 	return p
+}
+
+func startWith(str []rune, op []rune) bool {
+	if len(str) < len(op) {
+		return false
+	}
+	return reflect.DeepEqual(str[0:len(op)], op)
 }
 
 func isDigit(c rune) bool {
@@ -159,6 +174,10 @@ func isReserved(c rune) bool {
 	case '(':
 		fallthrough
 	case ')':
+		fallthrough
+	case '<':
+		fallthrough
+	case '>':
 		return true
 	default:
 		return false
@@ -175,22 +194,29 @@ func tokenize(p []rune) *token {
 			p = p[1:]
 			continue
 		}
+		if startWith(p, []rune("==")) || startWith(p, []rune("!=")) || startWith(p, []rune("<=")) || startWith(p, []rune(">=")) {
+			cur = newToken(tkReserved, cur, p, 2)
+			p = p[2:]
+			continue
+		}
 		if isReserved(c) {
-			cur = newToken(tkReserved, cur, p)
+			cur = newToken(tkReserved, cur, p, 1)
 			p = p[1:]
 			continue
 		}
 		if isDigit(c) {
-			cur = newToken(tkNum, cur, p)
+			cur = newToken(tkNum, cur, p, 0)
+			l := len(p)
 			v, err := strtoi(&p)
 			if err != nil {
-				errorAt(p, "parse error at %c", c)
+				errorAt(p, "parse error at %s", []rune{c})
 			}
 			cur.val = v
+			cur.len = l - len(p)
 			continue
 		}
-		errorAt(p, "cannot tokenize %c", c)
+		errorAt(p, "cannot tokenize %s", []rune{c})
 	}
-	newToken(tkEOF, cur, p)
+	newToken(tkEOF, cur, p, 0)
 	return h.next
 }

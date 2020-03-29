@@ -9,6 +9,10 @@ const (
 	ndSub
 	ndMul
 	ndDiv
+	ndEq
+	ndNe
+	ndLt
+	ndLe
 	ndNum
 )
 
@@ -28,19 +32,19 @@ func newNumber(v int) *node {
 }
 
 func primary() *node {
-	if consume('(') {
+	if consume([]rune("(")) {
 		n := expr()
-		expect(')')
+		expect([]rune(")"))
 		return n
 	}
 	return newNumber(expectNumber())
 }
 
 func unary() *node {
-	if consume('+') {
+	if consume([]rune("+")) {
 		return unary()
 	}
-	if consume('-') {
+	if consume([]rune("-")) {
 		return newBinary(ndSub, newNumber(0), unary())
 	}
 	return primary()
@@ -49,9 +53,9 @@ func unary() *node {
 func mul() *node {
 	n := unary()
 	for {
-		if consume('*') {
+		if consume([]rune("*")) {
 			n = newBinary(ndMul, n, unary())
-		} else if consume('/') {
+		} else if consume([]rune("/")) {
 			n = newBinary(ndDiv, n, unary())
 		} else {
 			return n
@@ -59,17 +63,51 @@ func mul() *node {
 	}
 }
 
-func expr() *node {
+func add() *node {
 	n := mul()
 	for {
-		if consume('+') {
+		if consume([]rune("+")) {
 			n = newBinary(ndAdd, n, mul())
-		} else if consume('-') {
+		} else if consume([]rune("-")) {
 			n = newBinary(ndSub, n, mul())
 		} else {
 			return n
 		}
 	}
+}
+
+func relational() *node {
+	n := add()
+	for {
+		if consume([]rune("<")) {
+			n = newBinary(ndLt, n, add())
+		} else if consume([]rune("<=")) {
+			n = newBinary(ndLe, n, add())
+		} else if consume([]rune(">")) {
+			n = newBinary(ndLt, add(), n)
+		} else if consume([]rune(">=")) {
+			n = newBinary(ndLe, add(), n)
+		} else {
+			return n
+		}
+	}
+}
+
+func equality() *node {
+	n := relational()
+	for {
+		if consume([]rune("==")) {
+			n = newBinary(ndEq, n, relational())
+		} else if consume([]rune("!=")) {
+			n = newBinary(ndNe, n, relational())
+		} else {
+			return n
+		}
+	}
+}
+
+func expr() *node {
+	return equality()
 }
 
 func gen(n *node) {
@@ -92,6 +130,22 @@ func gen(n *node) {
 	case ndDiv:
 		fmt.Printf("  cqo\n")
 		fmt.Printf("  idiv rdi\n")
+	case ndEq:
+		fmt.Printf("  cmp rax, rdi\n")
+		fmt.Printf("  sete al\n")
+		fmt.Printf("  movzb rax, al\n")
+	case ndNe:
+		fmt.Printf("  cmp rax, rdi\n")
+		fmt.Printf("  setne al\n")
+		fmt.Printf("  movzb rax, al\n")
+	case ndLt:
+		fmt.Printf("  cmp rax, rdi\n")
+		fmt.Printf("  setl al\n")
+		fmt.Printf("  movzb rax, al\n")
+	case ndLe:
+		fmt.Printf("  cmp rax, rdi\n")
+		fmt.Printf("  setle al\n")
+		fmt.Printf("  movzb rax, al\n")
 	}
 	fmt.Printf("  push rax\n")
 }
