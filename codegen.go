@@ -119,7 +119,20 @@ func gen(n *node) {
 			c--
 			fmt.Printf("  pop %s\n", argreg[c])
 		}
+		seq := labelSeq
+		labelSeq++
+		fmt.Printf("  mov rax, rsp\n")
+		fmt.Printf("  and rax, 15\n")
+		fmt.Printf("  jnz .Lcall%d\n", seq)
+		fmt.Printf("  mov rax, 0\n")
 		fmt.Printf("  call %s\n", string(n.funcname))
+		fmt.Printf("  jmp .Lend%d\n", seq)
+		fmt.Printf(".Lcall%d:\n", seq)
+		fmt.Printf("  sub rsp, 8\n")
+		fmt.Printf("  mov rax, 0\n")
+		fmt.Printf("  call %s\n", string(n.funcname))
+		fmt.Printf("  add rsp, 8\n")
+		fmt.Printf(".Lend%d:\n", seq)
 		fmt.Printf("  push rax\n")
 		return
 	case ndRet:
