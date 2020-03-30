@@ -19,6 +19,7 @@ const (
 	ndRet
 	ndIf
 	ndWhile
+	ndFor
 	ndExprStmt
 	ndLvar
 	ndNum
@@ -38,6 +39,8 @@ type node struct {
 	cond *node
 	then *node
 	els  *node
+	init *node
+	inc  *node
 	lv   *lvar
 	val  int
 }
@@ -198,6 +201,24 @@ func stmt() *node {
 		expect([]rune("("))
 		n.cond = expr()
 		expect([]rune(")"))
+		n.then = stmt()
+		return n
+	}
+	if consume([]rune("for")) {
+		n := &node{kind: ndFor}
+		expect([]rune("("))
+		if !consume([]rune(";")) {
+			n.init = readExprStmt()
+			expect([]rune(";"))
+		}
+		if !consume([]rune(";")) {
+			n.cond = expr()
+			expect([]rune(";"))
+		}
+		if !consume([]rune(")")) {
+			n.inc = readExprStmt()
+			expect([]rune(")"))
+		}
 		n.then = stmt()
 		return n
 	}

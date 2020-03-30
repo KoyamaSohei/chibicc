@@ -81,6 +81,26 @@ func gen(n *node) {
 		fmt.Printf("  jmp .Lbegin%d\n", seq)
 		fmt.Printf(".Lend%d:\n", seq)
 		return
+	case ndFor:
+		seq := labelSeq
+		labelSeq++
+		if n.init != nil {
+			gen(n.init)
+		}
+		fmt.Printf(".Lbegin%d:\n", seq)
+		if n.cond != nil {
+			gen(n.cond)
+			fmt.Printf("  pop rax\n")
+			fmt.Printf("  cmp rax, 0\n")
+			fmt.Printf("  je .Lend%d\n", seq)
+		}
+		gen(n.then)
+		if n.inc != nil {
+			gen(n.inc)
+		}
+		fmt.Printf("  jmp .Lbegin%d\n", seq)
+		fmt.Printf(".Lend%d:\n", seq)
+		return
 	case ndRet:
 		gen(n.lhs)
 		fmt.Printf("  pop rax\n")
