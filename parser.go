@@ -18,6 +18,7 @@ const (
 	ndAssign
 	ndRet
 	ndIf
+	ndWhile
 	ndExprStmt
 	ndLvar
 	ndNum
@@ -190,6 +191,14 @@ func stmt() *node {
 		if consume([]rune("else")) {
 			n.els = stmt()
 		}
+		return n
+	}
+	if consume([]rune("while")) {
+		n := &node{kind: ndWhile}
+		expect([]rune("("))
+		n.cond = expr()
+		expect([]rune(")"))
+		n.then = stmt()
 		return n
 	}
 	n := readExprStmt()
