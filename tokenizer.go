@@ -103,6 +103,23 @@ func startWith(str []rune, op []rune) bool {
 	return reflect.DeepEqual(str[0:len(op)], op)
 }
 
+func startWithReserved(str []rune) []rune {
+	kws := [3]string{"return", "if", "else"}
+	for _, kw := range kws {
+		l := len(kw)
+		if startWith(str, []rune(kw)) && !isAlNum(str[l]) {
+			return []rune(kw)
+		}
+	}
+	ops := [4]string{"==", "!=", "<=", ">="}
+	for _, op := range ops {
+		if startWith(str, []rune(op)) {
+			return []rune(op)
+		}
+	}
+	return nil
+}
+
 func isDigit(c rune) bool {
 	return c >= '0' && c <= '9'
 }
@@ -193,14 +210,11 @@ func tokenize(p []rune) *token {
 			p = p[1:]
 			continue
 		}
-		if startWith(p, []rune("return")) && !isAlNum(p[6]) {
-			cur = newToken(tkReserved, cur, p, 6)
-			p = p[6:]
-			continue
-		}
-		if startWith(p, []rune("==")) || startWith(p, []rune("!=")) || startWith(p, []rune("<=")) || startWith(p, []rune(">=")) {
-			cur = newToken(tkReserved, cur, p, 2)
-			p = p[2:]
+		kw := startWithReserved(p)
+		if kw != nil {
+			l := len(kw)
+			cur = newToken(tkReserved, cur, p, l)
+			p = p[l:]
 			continue
 		}
 		if isReserved(c) {

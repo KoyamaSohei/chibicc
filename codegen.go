@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+var labelSeq = 0
+
 func genAddr(n *node) {
 	if n.kind != ndLvar {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("not an lvalue"))
@@ -44,6 +46,28 @@ func gen(n *node) {
 		genAddr(n.lhs)
 		gen(n.rhs)
 		store()
+		return
+	case ndIf:
+		seq := labelSeq
+		labelSeq++
+		if n.els != nil {
+			gen(n.cond)
+			fmt.Printf("  pop rax\n")
+			fmt.Printf("  cmp rax, 0\n")
+			fmt.Printf("  je .Lelse%d\n", seq)
+			gen(n.then)
+			fmt.Printf("  jmp .Lend%d\n", seq)
+			fmt.Printf(".Lelse%d:\n", seq)
+			gen(n.els)
+			fmt.Printf(".Lend%d:\n", seq)
+		} else {
+			gen(n.cond)
+			fmt.Printf("  pop rax\n")
+			fmt.Printf("  cmp rax, 0\n")
+			fmt.Printf("  je .Lend%d\n", seq)
+			gen(n.then)
+			fmt.Printf(".Lend%d:\n", seq)
+		}
 		return
 	case ndRet:
 		gen(n.lhs)

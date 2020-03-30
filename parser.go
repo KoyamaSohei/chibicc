@@ -17,6 +17,7 @@ const (
 	ndLe
 	ndAssign
 	ndRet
+	ndIf
 	ndExprStmt
 	ndLvar
 	ndNum
@@ -33,6 +34,9 @@ type node struct {
 	next *node
 	lhs  *node
 	rhs  *node
+	cond *node
+	then *node
+	els  *node
 	lv   *lvar
 	val  int
 }
@@ -177,9 +181,24 @@ func stmt() *node {
 		expect([]rune(";"))
 		return n
 	}
-	n := newUnary(ndExprStmt, expr())
+	if consume([]rune("if")) {
+		n := &node{kind: ndIf}
+		expect([]rune("("))
+		n.cond = expr()
+		expect([]rune(")"))
+		n.then = stmt()
+		if consume([]rune("else")) {
+			n.els = stmt()
+		}
+		return n
+	}
+	n := readExprStmt()
 	expect([]rune(";"))
 	return n
+}
+
+func readExprStmt() *node {
+	return newUnary(ndExprStmt, expr())
 }
 
 func program() *prog {
