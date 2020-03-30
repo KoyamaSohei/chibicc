@@ -209,8 +209,13 @@ func tokenize(p []rune) *token {
 			continue
 		}
 		if isAlpha(c) {
-			cur = newToken(tkIdent, cur, p, 1)
+			q := p
+			r := len(p)
 			p = p[1:]
+			for len(p) > 0 && isAlNum(p[0]) {
+				p = p[1:]
+			}
+			cur = newToken(tkIdent, cur, q, r-len(p))
 			continue
 		}
 		if isDigit(c) {

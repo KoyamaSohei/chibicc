@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 )
 
 type nodeKind int
@@ -23,13 +24,36 @@ const (
 	ndNum
 )
 
+type lvar struct {
+	next   *lvar
+	name   []rune
+	offset int
+}
+
 type node struct {
 	kind nodeKind
 	next *node
 	lhs  *node
 	rhs  *node
-	name rune
+	lv   *lvar
 	val  int
+}
+
+type prog struct {
+	node      *node
+	locals    *lvar
+	stackSize int
+}
+
+var locals *lvar
+
+func findLvar(tok *token) *lvar {
+	for v := locals; v != nil; v = v.next {
+		if len(v.name) == tok.len && reflect.DeepEqual(tok.str[:tok.len], v.name) {
+			return v
+		}
+	}
+	return nil
 }
 
 func newUnary(k nodeKind, n *node) *node {
@@ -44,8 +68,14 @@ func newNumber(v int) *node {
 	return &node{kind: ndNum, val: v}
 }
 
-func newLvar(n rune) *node {
-	return &node{kind: ndLvar, name: n}
+func newLvar(v *lvar) *node {
+	return &node{kind: ndLvar, lv: v}
+}
+
+func pushLvar(name []rune) *lvar {
+	v := &lvar{next: locals, name: name}
+	locals = v
+	return v
 }
 
 func primary() *node {
@@ -56,7 +86,11 @@ func primary() *node {
 	}
 
 	if tok := consumeIdent(); tok != nil {
-		return newLvar(tok.str[0])
+		v := findLvar(tok)
+		if v == nil {
+			v = pushLvar(tok.str[:tok.len])
+		}
+		return newLvar(v)
 	}
 	return newNumber(expectNumber())
 }
@@ -150,14 +184,14 @@ func stmt() *node {
 	return n
 }
 
-func program() *node {
+func program() *prog {
 	var h node
 	cur := &h
 	for !atEOF() {
 		cur.next = stmt()
 		cur = cur.next
 	}
-	return h.next
+	return &prog{node: h.next, locals: locals}
 }
 
 func genAddr(n *node) {
@@ -165,8 +199,7 @@ func genAddr(n *node) {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("not an lvalue"))
 		os.Exit(1)
 	}
-	o := (int)(n.name-'a') * 8
-	fmt.Printf("  lea rax, [rbp-%d]\n", o)
+	fmt.Printf("  lea rax, [rbp-%d]\n", n.lv.offset)
 	fmt.Printf("  push rax\n")
 }
 
