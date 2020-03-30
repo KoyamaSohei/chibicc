@@ -20,6 +20,7 @@ const (
 	ndIf
 	ndWhile
 	ndFor
+	ndBlock
 	ndExprStmt
 	ndLvar
 	ndNum
@@ -41,6 +42,7 @@ type node struct {
 	els  *node
 	init *node
 	inc  *node
+	body *node
 	lv   *lvar
 	val  int
 }
@@ -220,6 +222,17 @@ func stmt() *node {
 			expect([]rune(")"))
 		}
 		n.then = stmt()
+		return n
+	}
+	if consume([]rune("{")) {
+		var h node
+		cur := &h
+		for !consume([]rune("}")) {
+			cur.next = stmt()
+			cur = cur.next
+		}
+		n := &node{kind: ndBlock}
+		n.body = h.next
 		return n
 	}
 	n := readExprStmt()
