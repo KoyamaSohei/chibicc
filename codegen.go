@@ -5,7 +5,10 @@ import (
 	"os"
 )
 
-var labelSeq = 0
+var (
+	labelSeq = 0
+	argreg   = [6]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+)
 
 func genAddr(n *node) {
 	if n.kind != ndLvar {
@@ -107,6 +110,15 @@ func gen(n *node) {
 		}
 		return
 	case ndFunCall:
+		c := 0
+		for arg := n.args; arg != nil; arg = arg.next {
+			gen(arg)
+			c++
+		}
+		for c > 0 {
+			c--
+			fmt.Printf("  pop %s\n", argreg[c])
+		}
 		fmt.Printf("  call %s\n", string(n.funcname))
 		fmt.Printf("  push rax\n")
 		return

@@ -45,6 +45,7 @@ type node struct {
 	inc      *node
 	body     *node
 	funcname []rune
+	args     *node
 	lv       *lvar
 	val      int
 }
@@ -97,8 +98,7 @@ func primary() *node {
 
 	if tok := consumeIdent(); tok != nil {
 		if consume([]rune("(")) {
-			expect([]rune(")"))
-			return &node{kind: ndFunCall, funcname: tok.str[:tok.len]}
+			return &node{kind: ndFunCall, funcname: tok.str[:tok.len], args: funcArgs()}
 		}
 		v := findLvar(tok)
 		if v == nil {
@@ -107,6 +107,20 @@ func primary() *node {
 		return newLvar(v)
 	}
 	return newNumber(expectNumber())
+}
+
+func funcArgs() *node {
+	if consume([]rune(")")) {
+		return nil
+	}
+	h := assign()
+	cur := h
+	for consume([]rune(",")) {
+		cur.next = assign()
+		cur = cur.next
+	}
+	expect([]rune(")"))
+	return h
 }
 
 func unary() *node {
