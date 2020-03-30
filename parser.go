@@ -21,6 +21,7 @@ const (
 	ndWhile
 	ndFor
 	ndBlock
+	ndFunCall
 	ndExprStmt
 	ndLvar
 	ndNum
@@ -33,18 +34,19 @@ type lvar struct {
 }
 
 type node struct {
-	kind nodeKind
-	next *node
-	lhs  *node
-	rhs  *node
-	cond *node
-	then *node
-	els  *node
-	init *node
-	inc  *node
-	body *node
-	lv   *lvar
-	val  int
+	kind     nodeKind
+	next     *node
+	lhs      *node
+	rhs      *node
+	cond     *node
+	then     *node
+	els      *node
+	init     *node
+	inc      *node
+	body     *node
+	funcname []rune
+	lv       *lvar
+	val      int
 }
 
 type prog struct {
@@ -94,6 +96,10 @@ func primary() *node {
 	}
 
 	if tok := consumeIdent(); tok != nil {
+		if consume([]rune("(")) {
+			expect([]rune(")"))
+			return &node{kind: ndFunCall, funcname: tok.str[:tok.len]}
+		}
 		v := findLvar(tok)
 		if v == nil {
 			v = pushLvar(tok.str[:tok.len])

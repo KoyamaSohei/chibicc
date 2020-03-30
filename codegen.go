@@ -106,6 +106,10 @@ func gen(n *node) {
 			gen(b)
 		}
 		return
+	case ndFunCall:
+		fmt.Printf("  call %s\n", string(n.funcname))
+		fmt.Printf("  push rax\n")
+		return
 	case ndRet:
 		gen(n.lhs)
 		fmt.Printf("  pop rax\n")
