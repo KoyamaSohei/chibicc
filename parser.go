@@ -40,6 +40,7 @@ type varlist struct {
 type node struct {
 	kind     nodeKind
 	next     *node
+	tok      *token
 	lhs      *node
 	rhs      *node
 	cond     *node
@@ -75,20 +76,20 @@ func findLvar(tok *token) *lvar {
 	return nil
 }
 
-func newUnary(k nodeKind, n *node) *node {
-	return &node{kind: k, lhs: n}
+func newUnary(k nodeKind, n *node, tok *token) *node {
+	return &node{kind: k, lhs: n, tok: tok}
 }
 
-func newBinary(k nodeKind, lhs *node, rhs *node) *node {
-	return &node{kind: k, lhs: lhs, rhs: rhs}
+func newBinary(k nodeKind, lhs *node, rhs *node, tok *token) *node {
+	return &node{kind: k, lhs: lhs, rhs: rhs, tok: tok}
 }
 
-func newNumber(v int) *node {
-	return &node{kind: ndNum, val: v}
+func newNumber(v int, tok *token) *node {
+	return &node{kind: ndNum, val: v, tok: tok}
 }
 
-func newLvar(v *lvar) *node {
-	return &node{kind: ndLvar, lv: v}
+func newLvar(v *lvar, tok *token) *node {
+	return &node{kind: ndLvar, lv: v, tok: tok}
 }
 
 func pushLvar(name []rune) *lvar {
@@ -99,32 +100,36 @@ func pushLvar(name []rune) *lvar {
 }
 
 func primary() *node {
-	if consume([]rune("(")) {
+	if consume([]rune("(")) != nil {
 		n := expr()
 		expect([]rune(")"))
 		return n
 	}
 
 	if tok := consumeIdent(); tok != nil {
-		if consume([]rune("(")) {
-			return &node{kind: ndFunCall, funcname: tok.str[:tok.len], args: funcArgs()}
+		if consume([]rune("(")) != nil {
+			return &node{kind: ndFunCall, funcname: tok.str[:tok.len], args: funcArgs(), tok: tok}
 		}
 		v := findLvar(tok)
 		if v == nil {
 			v = pushLvar(tok.str[:tok.len])
 		}
-		return newLvar(v)
+		return newLvar(v, tok)
 	}
-	return newNumber(expectNumber())
+	tok := t
+	if tok.kind != tkNum {
+		errorTok(tok, "expected expression")
+	}
+	return newNumber(expectNumber(), tok)
 }
 
 func funcArgs() *node {
-	if consume([]rune(")")) {
+	if consume([]rune(")")) != nil {
 		return nil
 	}
 	h := assign()
 	cur := h
-	for consume([]rune(",")) {
+	for consume([]rune(",")) != nil {
 		cur.next = assign()
 		cur = cur.next
 	}
@@ -133,11 +138,11 @@ func funcArgs() *node {
 }
 
 func unary() *node {
-	if consume([]rune("+")) {
+	if consume([]rune("+")) != nil {
 		return unary()
 	}
-	if consume([]rune("-")) {
-		return newBinary(ndSub, newNumber(0), unary())
+	if tok := consume([]rune("-")); tok != nil {
+		return newBinary(ndSub, newNumber(0, tok), unary(), tok)
 	}
 	return primary()
 }
@@ -145,10 +150,10 @@ func unary() *node {
 func mul() *node {
 	n := unary()
 	for {
-		if consume([]rune("*")) {
-			n = newBinary(ndMul, n, unary())
-		} else if consume([]rune("/")) {
-			n = newBinary(ndDiv, n, unary())
+		if tok := consume([]rune("*")); tok != nil {
+			n = newBinary(ndMul, n, unary(), tok)
+		} else if tok := consume([]rune("/")); tok != nil {
+			n = newBinary(ndDiv, n, unary(), tok)
 		} else {
 			return n
 		}
@@ -158,10 +163,10 @@ func mul() *node {
 func add() *node {
 	n := mul()
 	for {
-		if consume([]rune("+")) {
-			n = newBinary(ndAdd, n, mul())
-		} else if consume([]rune("-")) {
-			n = newBinary(ndSub, n, mul())
+		if tok := consume([]rune("+")); tok != nil {
+			n = newBinary(ndAdd, n, mul(), tok)
+		} else if tok := consume([]rune("-")); tok != nil {
+			n = newBinary(ndSub, n, mul(), tok)
 		} else {
 			return n
 		}
@@ -171,14 +176,14 @@ func add() *node {
 func relational() *node {
 	n := add()
 	for {
-		if consume([]rune("<")) {
-			n = newBinary(ndLt, n, add())
-		} else if consume([]rune("<=")) {
-			n = newBinary(ndLe, n, add())
-		} else if consume([]rune(">")) {
-			n = newBinary(ndLt, add(), n)
-		} else if consume([]rune(">=")) {
-			n = newBinary(ndLe, add(), n)
+		if tok := consume([]rune("<")); tok != nil {
+			n = newBinary(ndLt, n, add(), tok)
+		} else if tok := consume([]rune("<=")); tok != nil {
+			n = newBinary(ndLe, n, add(), tok)
+		} else if tok := consume([]rune(">")); tok != nil {
+			n = newBinary(ndLt, add(), n, tok)
+		} else if tok := consume([]rune(">=")); tok != nil {
+			n = newBinary(ndLe, add(), n, tok)
 		} else {
 			return n
 		}
@@ -188,10 +193,10 @@ func relational() *node {
 func equality() *node {
 	n := relational()
 	for {
-		if consume([]rune("==")) {
-			n = newBinary(ndEq, n, relational())
-		} else if consume([]rune("!=")) {
-			n = newBinary(ndNe, n, relational())
+		if tok := consume([]rune("==")); tok != nil {
+			n = newBinary(ndEq, n, relational(), tok)
+		} else if tok := consume([]rune("!=")); tok != nil {
+			n = newBinary(ndNe, n, relational(), tok)
 		} else {
 			return n
 		}
@@ -200,8 +205,8 @@ func equality() *node {
 
 func assign() *node {
 	n := equality()
-	if consume([]rune("=")) {
-		n = newBinary(ndAssign, n, assign())
+	if tok := consume([]rune("=")); tok != nil {
+		n = newBinary(ndAssign, n, assign(), tok)
 	}
 	return n
 }
@@ -211,56 +216,56 @@ func expr() *node {
 }
 
 func stmt() *node {
-	if consume([]rune("return")) {
-		n := newUnary(ndRet, expr())
+	if tok := consume([]rune("return")); tok != nil {
+		n := newUnary(ndRet, expr(), tok)
 		expect([]rune(";"))
 		return n
 	}
-	if consume([]rune("if")) {
-		n := &node{kind: ndIf}
+	if tok := consume([]rune("if")); tok != nil {
+		n := &node{kind: ndIf, tok: tok}
 		expect([]rune("("))
 		n.cond = expr()
 		expect([]rune(")"))
 		n.then = stmt()
-		if consume([]rune("else")) {
+		if consume([]rune("else")) != nil {
 			n.els = stmt()
 		}
 		return n
 	}
-	if consume([]rune("while")) {
-		n := &node{kind: ndWhile}
+	if tok := consume([]rune("while")); tok != nil {
+		n := &node{kind: ndWhile, tok: tok}
 		expect([]rune("("))
 		n.cond = expr()
 		expect([]rune(")"))
 		n.then = stmt()
 		return n
 	}
-	if consume([]rune("for")) {
-		n := &node{kind: ndFor}
+	if tok := consume([]rune("for")); tok != nil {
+		n := &node{kind: ndFor, tok: tok}
 		expect([]rune("("))
-		if !consume([]rune(";")) {
+		if consume([]rune(";")) == nil {
 			n.init = readExprStmt()
 			expect([]rune(";"))
 		}
-		if !consume([]rune(";")) {
+		if consume([]rune(";")) == nil {
 			n.cond = expr()
 			expect([]rune(";"))
 		}
-		if !consume([]rune(")")) {
+		if consume([]rune(")")) == nil {
 			n.inc = readExprStmt()
 			expect([]rune(")"))
 		}
 		n.then = stmt()
 		return n
 	}
-	if consume([]rune("{")) {
+	if tok := consume([]rune("{")); tok != nil {
 		var h node
 		cur := &h
-		for !consume([]rune("}")) {
+		for consume([]rune("}")) == nil {
 			cur.next = stmt()
 			cur = cur.next
 		}
-		n := &node{kind: ndBlock}
+		n := &node{kind: ndBlock, tok: tok}
 		n.body = h.next
 		return n
 	}
@@ -270,7 +275,8 @@ func stmt() *node {
 }
 
 func readExprStmt() *node {
-	return newUnary(ndExprStmt, expr())
+	tt := t
+	return newUnary(ndExprStmt, expr(), tt)
 }
 
 func function() *fun {
@@ -281,7 +287,7 @@ func function() *fun {
 	expect([]rune("{"))
 	var h node
 	cur := &h
-	for !consume([]rune("}")) {
+	for consume([]rune("}")) == nil {
 		cur.next = stmt()
 		cur = cur.next
 	}
@@ -291,12 +297,12 @@ func function() *fun {
 }
 
 func readFuncParams() *varlist {
-	if consume([]rune(")")) {
+	if consume([]rune(")")) != nil {
 		return nil
 	}
 	h := &varlist{lvar: pushLvar(expectIdent())}
 	cur := h
-	for !consume([]rune(")")) {
+	for consume([]rune(")")) == nil {
 		expect([]rune(","))
 		cur.next = &varlist{lvar: pushLvar(expectIdent())}
 		cur = cur.next

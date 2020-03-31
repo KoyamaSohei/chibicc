@@ -44,18 +44,28 @@ func errorAt(loc []rune, f string, r ...[]rune) {
 	os.Exit(1)
 }
 
-func consume(op []rune) bool {
+func errorTok(tok *token, f string, r ...[]rune) {
+	if tok != nil {
+		errorAt(tok.str, f, r...)
+	}
+	e := fmt.Errorf(f)
+	fmt.Fprintln(os.Stderr, e)
+	os.Exit(1)
+}
+
+func consume(op []rune) *token {
 	if t.kind != tkReserved {
-		return false
+		return nil
 	}
 	if len(op) != t.len {
-		return false
+		return nil
 	}
 	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
-		return false
+		return nil
 	}
+	tok := t
 	t = t.next
-	return true
+	return tok
 }
 
 func consumeIdent() *token {
@@ -69,17 +79,17 @@ func consumeIdent() *token {
 
 func expect(op []rune) {
 	if t.kind != tkReserved {
-		errorAt(t.str, "expected '%s'", op)
+		errorTok(t, "expected '%s'", op)
 	}
 	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
-		errorAt(t.str, "expected '%s'", op)
+		errorTok(t, "expected '%s'", op)
 	}
 	t = t.next
 }
 
 func expectNumber() int {
 	if t.kind != tkNum {
-		errorAt(t.str, "expected a number")
+		errorTok(t, "expected a number")
 	}
 	v := t.val
 	t = t.next
@@ -88,7 +98,7 @@ func expectNumber() int {
 
 func expectIdent() []rune {
 	if t.kind != tkIdent {
-		errorAt(t.str, "expected an identifier")
+		errorTok(t, "expected an identifier")
 	}
 	s := t.str[:t.len]
 	t = t.next
