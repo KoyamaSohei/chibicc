@@ -38,6 +38,8 @@ func store() {
 
 func gen(n *node) {
 	switch n.kind {
+	case ndNull:
+		return
 	case ndNum:
 		fmt.Printf("  push %d\n", n.val)
 		return

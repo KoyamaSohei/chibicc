@@ -27,10 +27,12 @@ const (
 	ndExprStmt
 	ndLvar
 	ndNum
+	ndNull
 )
 
 type lvar struct {
 	name   []rune
+	ty     *typ
 	offset int
 }
 
@@ -107,8 +109,8 @@ func newLvar(v *lvar, tok *token) *node {
 	return &node{kind: ndLvar, lv: v, tok: tok}
 }
 
-func pushLvar(name []rune) *lvar {
-	v := &lvar{name: name}
+func pushLvar(name []rune, ty *typ) *lvar {
+	v := &lvar{name: name, ty: ty}
 	vl := &varlist{lvar: v, next: locals}
 	locals = vl
 	return v
@@ -127,7 +129,7 @@ func primary() *node {
 		}
 		v := findLvar(tok)
 		if v == nil {
-			v = pushLvar(tok.str[:tok.len])
+			errorTok(tok, "undefined variable")
 		}
 		return newLvar(v, tok)
 	}
@@ -290,6 +292,9 @@ func stmt() *node {
 		n.body = h.next
 		return n
 	}
+	if peek([]rune("int")) {
+		return declaration()
+	}
 	n := readExprStmt()
 	expect([]rune(";"))
 	return n
@@ -300,8 +305,24 @@ func readExprStmt() *node {
 	return newUnary(ndExprStmt, expr(), tt)
 }
 
+func declaration() *node {
+	tok := t
+	ty := baseType()
+	v := pushLvar(expectIdent(), ty)
+	if consume([]rune(";")) != nil {
+		return &node{kind: ndNull, tok: tok}
+	}
+	expect([]rune("="))
+	lhs := &node{kind: ndLvar, tok: tok, lv: v}
+	rhs := expr()
+	expect([]rune(";"))
+	n := newBinary(ndAssign, lhs, rhs, tok)
+	return newUnary(ndExprStmt, n, tok)
+}
+
 func function() *fun {
 	locals = nil
+	baseType()
 	fn := &fun{name: expectIdent()}
 	expect([]rune("("))
 	fn.params = readFuncParams()
@@ -317,15 +338,29 @@ func function() *fun {
 	return fn
 }
 
+func baseType() *typ {
+	expect([]rune("int"))
+	ty := &typ{kind: tyInt}
+	for consume([]rune("*")) != nil {
+		ty = &typ{kind: tyPtr, base: ty}
+	}
+	return ty
+}
+
+func readFuncParam() *varlist {
+	ty := baseType()
+	return &varlist{lvar: pushLvar(expectIdent(), ty)}
+}
+
 func readFuncParams() *varlist {
 	if consume([]rune(")")) != nil {
 		return nil
 	}
-	h := &varlist{lvar: pushLvar(expectIdent())}
+	h := readFuncParam()
 	cur := h
 	for consume([]rune(")")) == nil {
 		expect([]rune(","))
-		cur.next = &varlist{lvar: pushLvar(expectIdent())}
+		cur.next = readFuncParam()
 		cur = cur.next
 	}
 	return h

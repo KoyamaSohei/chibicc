@@ -53,14 +53,21 @@ func errorTok(tok *token, f string, r ...[]rune) {
 	os.Exit(1)
 }
 
-func consume(op []rune) *token {
+func peek(s []rune) bool {
 	if t.kind != tkReserved {
-		return nil
+		return false
 	}
-	if len(op) != t.len {
-		return nil
+	if len(s) != t.len {
+		return false
 	}
-	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
+	if !reflect.DeepEqual(t.str[:t.len], s) {
+		return false
+	}
+	return true
+}
+
+func consume(op []rune) *token {
+	if !peek(op) {
 		return nil
 	}
 	tok := t
@@ -78,10 +85,7 @@ func consumeIdent() *token {
 }
 
 func expect(op []rune) {
-	if t.kind != tkReserved {
-		errorTok(t, "expected '%s'", op)
-	}
-	if c := t.str[0:t.len]; !reflect.DeepEqual(c, op) {
+	if !peek(op) {
 		errorTok(t, "expected '%s'", op)
 	}
 	t = t.next
@@ -123,7 +127,7 @@ func startWith(str []rune, op []rune) bool {
 }
 
 func startWithReserved(str []rune) []rune {
-	kws := [5]string{"return", "if", "else", "while", "for"}
+	kws := [6]string{"return", "if", "else", "while", "for", "int"}
 	for _, kw := range kws {
 		l := len(kw)
 		if startWith(str, []rune(kw)) && !isAlNum(str[l]) {

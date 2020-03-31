@@ -30,12 +30,13 @@ func visit(n *node) {
 		fallthrough
 	case ndLe:
 		fallthrough
-	case ndLvar:
-		fallthrough
 	case ndFunCall:
 		fallthrough
 	case ndNum:
 		n.ty = &typ{kind: tyInt}
+		return
+	case ndLvar:
+		n.ty = n.lv.ty
 		return
 	case ndAdd:
 		if n.rhs.ty.kind == tyPtr {
@@ -61,11 +62,10 @@ func visit(n *node) {
 		n.ty = &typ{kind: tyPtr, base: n.lhs.ty}
 		return
 	case ndDeref:
-		if n.lhs.ty.kind == tyPtr {
-			n.ty = n.lhs.ty.base
-		} else {
-			n.ty = &typ{kind: tyInt}
+		if n.lhs.ty.kind != tyPtr {
+			errorTok(n.tok, "invalid pointer dereference")
 		}
+		n.ty = n.lhs.ty.base
 		return
 	}
 
