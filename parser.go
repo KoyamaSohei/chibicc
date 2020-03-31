@@ -340,9 +340,9 @@ func function() *fun {
 
 func baseType() *typ {
 	expect([]rune("int"))
-	ty := &typ{kind: tyInt}
+	ty := intType()
 	for consume([]rune("*")) != nil {
-		ty = &typ{kind: tyPtr, base: ty}
+		ty = pointerTo(ty)
 	}
 	return ty
 }

@@ -1,5 +1,12 @@
 package main
 
+func intType() *typ {
+	return &typ{kind: tyInt}
+}
+func pointerTo(b *typ) *typ {
+	return &typ{kind: tyPtr, base: b}
+}
+
 func visit(n *node) {
 	if n == nil {
 		return
@@ -33,7 +40,7 @@ func visit(n *node) {
 	case ndFunCall:
 		fallthrough
 	case ndNum:
-		n.ty = &typ{kind: tyInt}
+		n.ty = intType()
 		return
 	case ndLvar:
 		n.ty = n.lv.ty
@@ -59,7 +66,7 @@ func visit(n *node) {
 		n.ty = n.lhs.ty
 		return
 	case ndAddr:
-		n.ty = &typ{kind: tyPtr, base: n.lhs.ty}
+		n.ty = pointerTo(n.lhs.ty)
 		return
 	case ndDeref:
 		if n.lhs.ty.kind != tyPtr {
