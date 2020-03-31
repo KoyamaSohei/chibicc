@@ -74,11 +74,13 @@ type typeKind int
 const (
 	tyInt typeKind = iota
 	tyPtr
+	tyArray
 )
 
 type typ struct {
-	kind typeKind
-	base *typ
+	kind      typeKind
+	base      *typ
+	arraySize int
 }
 
 var locals *varlist
@@ -308,7 +310,9 @@ func readExprStmt() *node {
 func declaration() *node {
 	tok := t
 	ty := baseType()
-	v := pushLvar(expectIdent(), ty)
+	name := expectIdent()
+	ty = readTypeSuffix(ty)
+	v := pushLvar(name, ty)
 	if consume([]rune(";")) != nil {
 		return &node{kind: ndNull, tok: tok}
 	}
@@ -347,9 +351,21 @@ func baseType() *typ {
 	return ty
 }
 
+func readTypeSuffix(b *typ) *typ {
+	if consume([]rune("[")) == nil {
+		return b
+	}
+	sz := expectNumber()
+	expect([]rune("]"))
+	b = readTypeSuffix(b)
+	return arrayOf(b, sz)
+}
+
 func readFuncParam() *varlist {
 	ty := baseType()
-	return &varlist{lvar: pushLvar(expectIdent(), ty)}
+	name := expectIdent()
+	ty = readTypeSuffix(ty)
+	return &varlist{lvar: pushLvar(name, ty)}
 }
 
 func readFuncParams() *varlist {

@@ -225,6 +225,10 @@ func isReserved(c rune) bool {
 	case ',':
 		fallthrough
 	case '&':
+		fallthrough
+	case '[':
+		fallthrough
+	case ']':
 		return true
 	default:
 		return false

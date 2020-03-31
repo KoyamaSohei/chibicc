@@ -7,6 +7,17 @@ func pointerTo(b *typ) *typ {
 	return &typ{kind: tyPtr, base: b}
 }
 
+func arrayOf(b *typ, s int) *typ {
+	return &typ{kind: tyArray, base: b, arraySize: s}
+}
+
+func sizeOf(ty *typ) int {
+	if ty.kind == tyInt || ty.kind == tyPtr {
+		return 8
+	}
+	return sizeOf(ty.base) * ty.arraySize
+}
+
 func visit(n *node) {
 	if n == nil {
 		return
@@ -46,18 +57,18 @@ func visit(n *node) {
 		n.ty = n.lv.ty
 		return
 	case ndAdd:
-		if n.rhs.ty.kind == tyPtr {
+		if n.rhs.ty.base != nil {
 			tmp := n.lhs
 			n.lhs = n.rhs
 			n.rhs = tmp
 		}
-		if n.rhs.ty.kind == tyPtr {
+		if n.rhs.ty.base != nil {
 			errorTok(n.tok, "invalid pointer arithmetic operands")
 		}
 		n.ty = n.lhs.ty
 		return
 	case ndSub:
-		if n.rhs.ty.kind == tyPtr {
+		if n.rhs.ty.base != nil {
 			errorTok(n.tok, "invalid pointer arithmetic operands")
 		}
 		n.ty = n.lhs.ty
@@ -66,10 +77,14 @@ func visit(n *node) {
 		n.ty = n.lhs.ty
 		return
 	case ndAddr:
-		n.ty = pointerTo(n.lhs.ty)
+		if n.lhs.ty.kind == tyArray {
+			n.ty = pointerTo(n.lhs.ty.base)
+		} else {
+			n.ty = pointerTo(n.lhs.ty)
+		}
 		return
 	case ndDeref:
-		if n.lhs.ty.kind != tyPtr {
+		if n.lhs.ty.base == nil {
 			errorTok(n.tok, "invalid pointer dereference")
 		}
 		n.ty = n.lhs.ty.base

@@ -19,7 +19,8 @@ func main() {
 	for fn := p; fn != nil; fn = fn.next {
 		o := 0
 		for v := fn.locals; v != nil; v = v.next {
-			o += 8
+			va := v.lvar
+			o += sizeOf(va.ty)
 			v.lvar.offset = o
 		}
 		fn.stackSize = o
