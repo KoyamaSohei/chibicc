@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 var (
@@ -12,12 +11,16 @@ var (
 )
 
 func genAddr(n *node) {
-	if n.kind != ndLvar {
-		fmt.Fprintln(os.Stderr, fmt.Errorf("not an lvalue"))
-		os.Exit(1)
+	switch n.kind {
+	case ndLvar:
+		fmt.Printf("  lea rax, [rbp-%d]\n", n.lv.offset)
+		fmt.Printf("  push rax\n")
+		return
+	case ndDeref:
+		gen(n.lhs)
+		return
 	}
-	fmt.Printf("  lea rax, [rbp-%d]\n", n.lv.offset)
-	fmt.Printf("  push rax\n")
+	errorTok(n.tok, "not an lvalue")
 }
 
 func load() {
@@ -50,6 +53,13 @@ func gen(n *node) {
 		genAddr(n.lhs)
 		gen(n.rhs)
 		store()
+		return
+	case ndAddr:
+		genAddr(n.lhs)
+		return
+	case ndDeref:
+		gen(n.lhs)
+		load()
 		return
 	case ndIf:
 		seq := labelSeq

@@ -16,6 +16,8 @@ const (
 	ndLt
 	ndLe
 	ndAssign
+	ndAddr
+	ndDeref
 	ndRet
 	ndIf
 	ndWhile
@@ -143,6 +145,12 @@ func unary() *node {
 	}
 	if tok := consume([]rune("-")); tok != nil {
 		return newBinary(ndSub, newNumber(0, tok), unary(), tok)
+	}
+	if tok := consume([]rune("&")); tok != nil {
+		return newUnary(ndAddr, unary(), tok)
+	}
+	if tok := consume([]rune("*")); tok != nil {
+		return newUnary(ndDeref, unary(), tok)
 	}
 	return primary()
 }
