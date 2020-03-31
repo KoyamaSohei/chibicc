@@ -22,6 +22,7 @@ const (
 	ndIf
 	ndWhile
 	ndFor
+	ndSizeOf
 	ndBlock
 	ndFunCall
 	ndExprStmt
@@ -123,6 +124,9 @@ func primary() *node {
 		n := expr()
 		expect([]rune(")"))
 		return n
+	}
+	if tok := consume([]rune("sizeof")); tok != nil {
+		return newUnary(ndSizeOf, unary(), tok)
 	}
 
 	if tok := consumeIdent(); tok != nil {

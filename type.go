@@ -89,6 +89,12 @@ func visit(n *node) {
 		}
 		n.ty = n.lhs.ty.base
 		return
+	case ndSizeOf:
+		n.kind = ndNum
+		n.ty = intType()
+		n.val = sizeOf(n.lhs.ty)
+		n.lhs = nil
+		return
 	}
 
 }
