@@ -28,9 +28,13 @@ const (
 )
 
 type lvar struct {
-	next   *lvar
 	name   []rune
 	offset int
+}
+
+type varlist struct {
+	next *varlist
+	lvar *lvar
 }
 
 type node struct {
@@ -53,15 +57,17 @@ type node struct {
 type fun struct {
 	next      *fun
 	name      []rune
+	params    *varlist
 	node      *node
-	locals    *lvar
+	locals    *varlist
 	stackSize int
 }
 
-var locals *lvar
+var locals *varlist
 
 func findLvar(tok *token) *lvar {
-	for v := locals; v != nil; v = v.next {
+	for vl := locals; vl != nil; vl = vl.next {
+		v := vl.lvar
 		if len(v.name) == tok.len && reflect.DeepEqual(tok.str[:tok.len], v.name) {
 			return v
 		}
@@ -86,8 +92,9 @@ func newLvar(v *lvar) *node {
 }
 
 func pushLvar(name []rune) *lvar {
-	v := &lvar{next: locals, name: name}
-	locals = v
+	v := &lvar{name: name}
+	vl := &varlist{lvar: v, next: locals}
+	locals = vl
 	return v
 }
 
@@ -268,9 +275,9 @@ func readExprStmt() *node {
 
 func function() *fun {
 	locals = nil
-	name := expectIdent()
+	fn := &fun{name: expectIdent()}
 	expect([]rune("("))
-	expect([]rune(")"))
+	fn.params = readFuncParams()
 	expect([]rune("{"))
 	var h node
 	cur := &h
@@ -278,7 +285,23 @@ func function() *fun {
 		cur.next = stmt()
 		cur = cur.next
 	}
-	return &fun{name: name, node: h.next, locals: locals}
+	fn.node = h.next
+	fn.locals = locals
+	return fn
+}
+
+func readFuncParams() *varlist {
+	if consume([]rune(")")) {
+		return nil
+	}
+	h := &varlist{lvar: pushLvar(expectIdent())}
+	cur := h
+	for !consume([]rune(")")) {
+		expect([]rune(","))
+		cur.next = &varlist{lvar: pushLvar(expectIdent())}
+		cur = cur.next
+	}
+	return h
 }
 
 func program() *fun {

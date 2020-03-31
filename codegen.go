@@ -186,6 +186,12 @@ func codegen(p *fun) {
 		fmt.Printf("  push rbp\n")
 		fmt.Printf("  mov rbp, rsp\n")
 		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
+		i := 0
+		for vl := fn.params; vl != nil; vl = vl.next {
+			v := vl.lvar
+			fmt.Printf("  mov [rbp-%d], %s\n", v.offset, argreg[i])
+			i++
+		}
 		for n := fn.node; n != nil; n = n.next {
 			gen(n)
 		}

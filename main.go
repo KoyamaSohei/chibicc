@@ -19,7 +19,7 @@ func main() {
 		o := 0
 		for v := fn.locals; v != nil; v = v.next {
 			o += 8
-			v.offset = o
+			v.lvar.offset = o
 		}
 		fn.stackSize = o
 	}
