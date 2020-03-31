@@ -159,8 +159,14 @@ func gen(n *node) {
 
 	switch n.kind {
 	case ndAdd:
+		if n.ty.kind == tyPtr {
+			fmt.Printf("  imul rdi, 8\n")
+		}
 		fmt.Printf("  add rax, rdi\n")
 	case ndSub:
+		if n.ty.kind == tyPtr {
+			fmt.Printf("  imul rdi, 8\n")
+		}
 		fmt.Printf("  sub rax, rdi\n")
 	case ndMul:
 		fmt.Printf("  imul rax, rdi\n")

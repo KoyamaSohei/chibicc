@@ -42,6 +42,7 @@ type varlist struct {
 type node struct {
 	kind     nodeKind
 	next     *node
+	ty       *typ
 	tok      *token
 	lhs      *node
 	rhs      *node
@@ -64,6 +65,18 @@ type fun struct {
 	node      *node
 	locals    *varlist
 	stackSize int
+}
+
+type typeKind int
+
+const (
+	tyInt typeKind = iota
+	tyPtr
+)
+
+type typ struct {
+	kind typeKind
+	base *typ
 }
 
 var locals *varlist

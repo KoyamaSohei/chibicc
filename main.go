@@ -15,6 +15,7 @@ func main() {
 	inpt = s
 	t = tokenize([]rune(s))
 	p := program()
+	addType(p)
 	for fn := p; fn != nil; fn = fn.next {
 		o := 0
 		for v := fn.locals; v != nil; v = v.next {
