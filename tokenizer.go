@@ -86,6 +86,15 @@ func expectNumber() int {
 	return v
 }
 
+func expectIdent() []rune {
+	if t.kind != tkIdent {
+		errorAt(t.str, "expected an identifier")
+	}
+	s := t.str[:t.len]
+	t = t.next
+	return s
+}
+
 func atEOF() bool {
 	return t.kind == tkEOF
 }

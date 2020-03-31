@@ -7,6 +7,7 @@ import (
 
 var (
 	labelSeq = 0
+	funcname []rune
 	argreg   = [6]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 )
 
@@ -138,7 +139,7 @@ func gen(n *node) {
 	case ndRet:
 		gen(n.lhs)
 		fmt.Printf("  pop rax\n")
-		fmt.Printf("  jmp .Lreturn\n")
+		fmt.Printf("  jmp .Lreturn.%s\n", string(funcname))
 		return
 	}
 	gen(n.lhs)
@@ -176,24 +177,21 @@ func gen(n *node) {
 	fmt.Printf("  push rax\n")
 }
 
-func codegen(p *prog) {
-	o := 0
-	for v := p.locals; v != nil; v = v.next {
-		o += 8
-		v.offset = o
-	}
-	p.stackSize = o
+func codegen(p *fun) {
 	fmt.Printf(".intel_syntax noprefix\n")
-	fmt.Printf(".global main\n")
-	fmt.Printf("main:\n")
-	fmt.Printf("  push rbp\n")
-	fmt.Printf("  mov rbp, rsp\n")
-	fmt.Printf("  sub rsp, %d\n", p.stackSize)
-	for s := p.node; s != nil; s = s.next {
-		gen(s)
+	for fn := p; fn != nil; fn = fn.next {
+		fmt.Printf(".global %s\n", string(fn.name))
+		fmt.Printf("%s:\n", string(fn.name))
+		funcname = fn.name
+		fmt.Printf("  push rbp\n")
+		fmt.Printf("  mov rbp, rsp\n")
+		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
+		for n := fn.node; n != nil; n = n.next {
+			gen(n)
+		}
+		fmt.Printf(".Lreturn.%s:\n", string(funcname))
+		fmt.Printf("  mov rsp, rbp\n")
+		fmt.Printf("  pop rbp\n")
+		fmt.Printf("  ret\n")
 	}
-	fmt.Printf(".Lreturn:\n")
-	fmt.Printf("  mov rsp, rbp\n")
-	fmt.Printf("  pop rbp\n")
-	fmt.Printf("  ret\n")
 }

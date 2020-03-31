@@ -50,7 +50,9 @@ type node struct {
 	val      int
 }
 
-type prog struct {
+type fun struct {
+	next      *fun
+	name      []rune
 	node      *node
 	locals    *lvar
 	stackSize int
@@ -264,12 +266,27 @@ func readExprStmt() *node {
 	return newUnary(ndExprStmt, expr())
 }
 
-func program() *prog {
+func function() *fun {
+	locals = nil
+	name := expectIdent()
+	expect([]rune("("))
+	expect([]rune(")"))
+	expect([]rune("{"))
 	var h node
 	cur := &h
-	for !atEOF() {
+	for !consume([]rune("}")) {
 		cur.next = stmt()
 		cur = cur.next
 	}
-	return &prog{node: h.next, locals: locals}
+	return &fun{name: name, node: h.next, locals: locals}
+}
+
+func program() *fun {
+	var h fun
+	cur := &h
+	for !atEOF() {
+		cur.next = function()
+		cur = cur.next
+	}
+	return h.next
 }
