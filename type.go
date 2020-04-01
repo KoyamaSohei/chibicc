@@ -53,8 +53,8 @@ func visit(n *node) {
 	case ndNum:
 		n.ty = intType()
 		return
-	case ndLvar:
-		n.ty = n.lv.ty
+	case ndVar:
+		n.ty = n.v.ty
 		return
 	case ndAdd:
 		if n.rhs.ty.base != nil {
@@ -99,8 +99,8 @@ func visit(n *node) {
 
 }
 
-func addType(p *fun) {
-	for fn := p; fn != nil; fn = fn.next {
+func addType(p *prog) {
+	for fn := p.fns; fn != nil; fn = fn.next {
 		for n := fn.node; n != nil; n = n.next {
 			visit(n)
 		}

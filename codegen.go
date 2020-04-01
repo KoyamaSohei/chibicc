@@ -12,9 +12,13 @@ var (
 
 func genAddr(n *node) {
 	switch n.kind {
-	case ndLvar:
-		fmt.Printf("  lea rax, [rbp-%d]\n", n.lv.offset)
-		fmt.Printf("  push rax\n")
+	case ndVar:
+		if v := n.v; v.isLocal {
+			fmt.Printf("  lea rax, [rbp-%d]\n", v.offset)
+			fmt.Printf("  push rax\n")
+		} else {
+			fmt.Printf("  push offset %s\n", string(v.name))
+		}
 		return
 	case ndDeref:
 		gen(n.lhs)
@@ -54,7 +58,7 @@ func gen(n *node) {
 		gen(n.lhs)
 		fmt.Printf("  add rsp, 8\n")
 		return
-	case ndLvar:
+	case ndVar:
 		genAddr(n)
 		if n.ty.kind != tyArray {
 			load()
@@ -206,9 +210,18 @@ func gen(n *node) {
 	fmt.Printf("  push rax\n")
 }
 
-func codegen(p *fun) {
-	fmt.Printf(".intel_syntax noprefix\n")
-	for fn := p; fn != nil; fn = fn.next {
+func emitData(p *prog) {
+	fmt.Printf(".data\n")
+	for vl := p.globals; vl != nil; vl = vl.next {
+		v := vl.v
+		fmt.Printf("%s:\n", string(v.name))
+		fmt.Printf("  .zero %d\n", sizeOf(v.ty))
+	}
+}
+
+func emitText(p *prog) {
+	fmt.Printf(".text\n")
+	for fn := p.fns; fn != nil; fn = fn.next {
 		fmt.Printf(".global %s\n", string(fn.name))
 		fmt.Printf("%s:\n", string(fn.name))
 		funcname = fn.name
@@ -217,7 +230,7 @@ func codegen(p *fun) {
 		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
 		i := 0
 		for vl := fn.params; vl != nil; vl = vl.next {
-			v := vl.lvar
+			v := vl.v
 			fmt.Printf("  mov [rbp-%d], %s\n", v.offset, argreg[i])
 			i++
 		}
@@ -229,4 +242,10 @@ func codegen(p *fun) {
 		fmt.Printf("  pop rbp\n")
 		fmt.Printf("  ret\n")
 	}
+}
+
+func codegen(p *prog) {
+	fmt.Printf(".intel_syntax noprefix\n")
+	emitData(p)
+	emitText(p)
 }

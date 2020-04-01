@@ -26,20 +26,21 @@ const (
 	ndBlock
 	ndFunCall
 	ndExprStmt
-	ndLvar
+	ndVar
 	ndNum
 	ndNull
 )
 
-type lvar struct {
-	name   []rune
-	ty     *typ
-	offset int
+type va struct {
+	name    []rune
+	ty      *typ
+	isLocal bool
+	offset  int
 }
 
 type varlist struct {
 	next *varlist
-	lvar *lvar
+	v    *va
 }
 
 type node struct {
@@ -57,7 +58,7 @@ type node struct {
 	body     *node
 	funcname []rune
 	args     *node
-	lv       *lvar
+	v        *va
 	val      int
 }
 
@@ -68,6 +69,11 @@ type fun struct {
 	node      *node
 	locals    *varlist
 	stackSize int
+}
+
+type prog struct {
+	globals *varlist
+	fns     *fun
 }
 
 type typeKind int
@@ -84,11 +90,20 @@ type typ struct {
 	arraySize int
 }
 
-var locals *varlist
+var (
+	locals  *varlist
+	globals *varlist
+)
 
-func findLvar(tok *token) *lvar {
+func findVar(tok *token) *va {
 	for vl := locals; vl != nil; vl = vl.next {
-		v := vl.lvar
+		v := vl.v
+		if len(v.name) == tok.len && reflect.DeepEqual(tok.str[:tok.len], v.name) {
+			return v
+		}
+	}
+	for vl := globals; vl != nil; vl = vl.next {
+		v := vl.v
 		if len(v.name) == tok.len && reflect.DeepEqual(tok.str[:tok.len], v.name) {
 			return v
 		}
@@ -108,14 +123,20 @@ func newNumber(v int, tok *token) *node {
 	return &node{kind: ndNum, val: v, tok: tok}
 }
 
-func newLvar(v *lvar, tok *token) *node {
-	return &node{kind: ndLvar, lv: v, tok: tok}
+func newVar(v *va, tok *token) *node {
+	return &node{kind: ndVar, v: v, tok: tok}
 }
 
-func pushLvar(name []rune, ty *typ) *lvar {
-	v := &lvar{name: name, ty: ty}
-	vl := &varlist{lvar: v, next: locals}
-	locals = vl
+func pushVar(name []rune, ty *typ, isLocal bool) *va {
+	v := &va{name: name, ty: ty, isLocal: isLocal}
+	vl := &varlist{v: v}
+	if isLocal {
+		vl.next = locals
+		locals = vl
+	} else {
+		vl.next = globals
+		globals = vl
+	}
 	return v
 }
 
@@ -133,11 +154,11 @@ func primary() *node {
 		if consume([]rune("(")) != nil {
 			return &node{kind: ndFunCall, funcname: tok.str[:tok.len], args: funcArgs(), tok: tok}
 		}
-		v := findLvar(tok)
+		v := findVar(tok)
 		if v == nil {
 			errorTok(tok, "undefined variable")
 		}
-		return newLvar(v, tok)
+		return newVar(v, tok)
 	}
 	tok := t
 	if tok.kind != tkNum {
@@ -326,16 +347,24 @@ func declaration() *node {
 	ty := baseType()
 	name := expectIdent()
 	ty = readTypeSuffix(ty)
-	v := pushLvar(name, ty)
+	v := pushVar(name, ty, true)
 	if consume([]rune(";")) != nil {
 		return &node{kind: ndNull, tok: tok}
 	}
 	expect([]rune("="))
-	lhs := &node{kind: ndLvar, tok: tok, lv: v}
+	lhs := &node{kind: ndVar, tok: tok, v: v}
 	rhs := expr()
 	expect([]rune(";"))
 	n := newBinary(ndAssign, lhs, rhs, tok)
 	return newUnary(ndExprStmt, n, tok)
+}
+
+func globalVar() {
+	ty := baseType()
+	name := expectIdent()
+	ty = readTypeSuffix(ty)
+	expect([]rune(";"))
+	pushVar(name, ty, false)
 }
 
 func function() *fun {
@@ -379,7 +408,7 @@ func readFuncParam() *varlist {
 	ty := baseType()
 	name := expectIdent()
 	ty = readTypeSuffix(ty)
-	return &varlist{lvar: pushLvar(name, ty)}
+	return &varlist{v: pushVar(name, ty, true)}
 }
 
 func readFuncParams() *varlist {
@@ -396,12 +425,26 @@ func readFuncParams() *varlist {
 	return h
 }
 
-func program() *fun {
+func isFunction() bool {
+	tok := t
+	baseType()
+	f := (consumeIdent() != nil && consume([]rune("(")) != nil)
+	t = tok
+	return f
+}
+
+func program() *prog {
 	var h fun
 	cur := &h
+	globals = nil
 	for !atEOF() {
-		cur.next = function()
-		cur = cur.next
+		if isFunction() {
+			cur.next = function()
+			cur = cur.next
+		} else {
+			globalVar()
+		}
+
 	}
-	return h.next
+	return &prog{globals: globals, fns: h.next}
 }
