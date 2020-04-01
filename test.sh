@@ -15,7 +15,7 @@ assert() {
   input="$2"
 
   ./chibicc "$input" > tmp.s
-  cc -o tmp tmp.s tmp2.o
+  cc -o tmp tmp.s tmp2.o -no-pie
   ./tmp
   actual="$?"
 
