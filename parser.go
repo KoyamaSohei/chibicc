@@ -160,6 +160,16 @@ func funcArgs() *node {
 	return h
 }
 
+func postfix() *node {
+	n := primary()
+	for tok := consume([]rune("[")); tok != nil; tok = consume([]rune("[")) {
+		exp := newBinary(ndAdd, n, expr(), tok)
+		expect([]rune("]"))
+		n = newUnary(ndDeref, exp, tok)
+	}
+	return n
+}
+
 func unary() *node {
 	if consume([]rune("+")) != nil {
 		return unary()
@@ -173,7 +183,7 @@ func unary() *node {
 	if tok := consume([]rune("*")); tok != nil {
 		return newUnary(ndDeref, unary(), tok)
 	}
-	return primary()
+	return postfix()
 }
 
 func mul() *node {
