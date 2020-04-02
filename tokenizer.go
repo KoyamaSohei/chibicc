@@ -158,6 +158,25 @@ func isAlNum(c rune) bool {
 	return isAlpha(c) || isDigit(c)
 }
 
+func isSpace(c rune) bool {
+	switch c {
+	case ' ':
+		fallthrough
+	case '\t':
+		fallthrough
+	case '\n':
+		fallthrough
+	case '\v':
+		fallthrough
+	case '\f':
+		fallthrough
+	case '\r':
+		return true
+	default:
+		return false
+	}
+}
+
 func strtoi(p *[]rune) (int, error) {
 	s := *p
 	c := s[0]
@@ -299,7 +318,7 @@ func tokenize(p []rune) *token {
 	cur := &h
 	for len(p) > 0 {
 		c := p[0]
-		if c == ' ' {
+		if isSpace(c) {
 			p = p[1:]
 			continue
 		}
