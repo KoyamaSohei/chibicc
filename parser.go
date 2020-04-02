@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -32,10 +33,12 @@ const (
 )
 
 type va struct {
-	name    []rune
-	ty      *typ
-	isLocal bool
-	offset  int
+	name     []rune
+	ty       *typ
+	isLocal  bool
+	contents []rune
+	contLen  int
+	offset   int
 }
 
 type varlist struct {
@@ -92,8 +95,9 @@ type typ struct {
 }
 
 var (
-	locals  *varlist
-	globals *varlist
+	locals   *varlist
+	globals  *varlist
+	labelcnt = 0
 )
 
 func findVar(tok *token) *va {
@@ -126,6 +130,11 @@ func newNumber(v int, tok *token) *node {
 
 func newVar(v *va, tok *token) *node {
 	return &node{kind: ndVar, v: v, tok: tok}
+}
+
+func newLabel() []rune {
+	s := fmt.Sprintf(".L.data.%d", labelcnt)
+	return []rune(s)
 }
 
 func pushVar(name []rune, ty *typ, isLocal bool) *va {
@@ -162,6 +171,14 @@ func primary() *node {
 		return newVar(v, tok)
 	}
 	tok := t
+	if tok.kind == tkStr {
+		t = t.next
+		ty := arrayOf(charType(), tok.contLen)
+		v := pushVar(newLabel(), ty, false)
+		v.contents = tok.contents
+		v.contLen = tok.contLen
+		return newVar(v, tok)
+	}
 	if tok.kind != tkNum {
 		errorTok(tok, "expected expression")
 	}

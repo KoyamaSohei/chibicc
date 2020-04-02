@@ -11,16 +11,19 @@ type tokenKind int
 const (
 	tkReserved tokenKind = iota
 	tkIdent
+	tkStr
 	tkNum
 	tkEOF
 )
 
 type token struct {
-	kind tokenKind
-	next *token
-	val  int
-	str  []rune
-	len  int
+	kind     tokenKind
+	next     *token
+	val      int
+	str      []rune
+	len      int
+	contents []rune
+	contLen  int
 }
 
 var (
@@ -265,6 +268,21 @@ func tokenize(p []rune) *token {
 				p = p[1:]
 			}
 			cur = newToken(tkIdent, cur, q, r-len(p))
+			continue
+		}
+		if c == '"' {
+			q := p
+			p = p[1:]
+			for len(p) > 0 && p[0] != '"' {
+				p = p[1:]
+			}
+			if len(p) == 0 {
+				errorAt(q, "unclosed string literal")
+			}
+			cur = newToken(tkStr, cur, q, len(q)-len(p))
+			cur.contents = append(q[1:len(q)-len(p)], '\x00')
+			cur.contLen = len(q) - len(p)
+			p = p[1:]
 			continue
 		}
 		if isDigit(c) {
