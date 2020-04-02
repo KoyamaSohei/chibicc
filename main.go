@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+func alignTo(n int, align int) int {
+	return (n + align - 1) & ^(align - 1)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		e := fmt.Errorf("%s: invalid number of arguments", os.Args[0])
@@ -23,7 +27,7 @@ func main() {
 			o += sizeOf(va.ty)
 			vl.v.offset = o
 		}
-		fn.stackSize = o
+		fn.stackSize = alignTo(o, 8)
 	}
 	codegen(p)
 	os.Exit(0)

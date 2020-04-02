@@ -127,7 +127,7 @@ func startWith(str []rune, op []rune) bool {
 }
 
 func startWithReserved(str []rune) []rune {
-	kws := [7]string{"return", "if", "else", "while", "for", "int", "sizeof"}
+	kws := [8]string{"return", "if", "else", "while", "for", "int", "char", "sizeof"}
 	for _, kw := range kws {
 		l := len(kw)
 		if startWith(str, []rune(kw)) && !isAlNum(str[l]) {

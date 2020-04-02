@@ -1,8 +1,13 @@
 package main
 
+func charType() *typ {
+	return &typ{kind: tyChar}
+}
+
 func intType() *typ {
 	return &typ{kind: tyInt}
 }
+
 func pointerTo(b *typ) *typ {
 	return &typ{kind: tyPtr, base: b}
 }
@@ -12,7 +17,12 @@ func arrayOf(b *typ, s int) *typ {
 }
 
 func sizeOf(ty *typ) int {
-	if ty.kind == tyInt || ty.kind == tyPtr {
+	switch ty.kind {
+	case tyChar:
+		return 1
+	case tyInt:
+		fallthrough
+	case tyPtr:
 		return 8
 	}
 	return sizeOf(ty.base) * ty.arraySize

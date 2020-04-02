@@ -79,7 +79,8 @@ type prog struct {
 type typeKind int
 
 const (
-	tyInt typeKind = iota
+	tyChar typeKind = iota
+	tyInt
 	tyPtr
 	tyArray
 )
@@ -329,12 +330,16 @@ func stmt() *node {
 		n.body = h.next
 		return n
 	}
-	if peek([]rune("int")) {
+	if isTypeName() {
 		return declaration()
 	}
 	n := readExprStmt()
 	expect([]rune(";"))
 	return n
+}
+
+func isTypeName() bool {
+	return peek([]rune("char")) || peek([]rune("int"))
 }
 
 func readExprStmt() *node {
@@ -386,8 +391,13 @@ func function() *fun {
 }
 
 func baseType() *typ {
-	expect([]rune("int"))
-	ty := intType()
+	var ty *typ
+	if consume([]rune("char")) != nil {
+		ty = charType()
+	} else {
+		expect([]rune("int"))
+		ty = intType()
+	}
 	for consume([]rune("*")) != nil {
 		ty = pointerTo(ty)
 	}

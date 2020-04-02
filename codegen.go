@@ -7,7 +7,8 @@ import (
 var (
 	labelSeq = 0
 	funcname []rune
-	argreg   = [6]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+	argreg1  = [6]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
+	argreg8  = [6]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 )
 
 func genAddr(n *node) {
@@ -34,16 +35,24 @@ func genLval(n *node) {
 	genAddr(n)
 }
 
-func load() {
+func load(ty *typ) {
 	fmt.Printf("  pop rax\n")
-	fmt.Printf("  mov rax, [rax]\n")
+	if sizeOf(ty) == 1 {
+		fmt.Printf("  movsx rax, byte ptr [rax]\n")
+	} else {
+		fmt.Printf("  mov rax, [rax]\n")
+	}
 	fmt.Printf("  push rax\n")
 }
 
-func store() {
+func store(ty *typ) {
 	fmt.Printf("  pop rdi\n")
 	fmt.Printf("  pop rax\n")
-	fmt.Printf("  mov [rax], rdi\n")
+	if sizeOf(ty) == 1 {
+		fmt.Printf("  mov [rax], dil\n")
+	} else {
+		fmt.Printf("  mov [rax], rdi\n")
+	}
 	fmt.Printf("  push rdi\n")
 }
 
@@ -61,13 +70,13 @@ func gen(n *node) {
 	case ndVar:
 		genAddr(n)
 		if n.ty.kind != tyArray {
-			load()
+			load(n.ty)
 		}
 		return
 	case ndAssign:
 		genLval(n.lhs)
 		gen(n.rhs)
-		store()
+		store(n.ty)
 		return
 	case ndAddr:
 		genAddr(n.lhs)
@@ -75,7 +84,7 @@ func gen(n *node) {
 	case ndDeref:
 		gen(n.lhs)
 		if n.ty.kind != tyArray {
-			load()
+			load(n.ty)
 		}
 		return
 	case ndIf:
@@ -145,7 +154,7 @@ func gen(n *node) {
 		}
 		for c > 0 {
 			c--
-			fmt.Printf("  pop %s\n", argreg[c])
+			fmt.Printf("  pop %s\n", argreg8[c])
 		}
 		seq := labelSeq
 		labelSeq++
@@ -219,6 +228,15 @@ func emitData(p *prog) {
 	}
 }
 
+func loadArg(v *va, idx int) {
+	sz := sizeOf(v.ty)
+	if sz == 1 {
+		fmt.Printf("  mov [rbp-%d], %s\n", v.offset, argreg1[idx])
+	} else {
+		fmt.Printf("  mov [rbp-%d], %s\n", v.offset, argreg8[idx])
+	}
+}
+
 func emitText(p *prog) {
 	fmt.Printf(".text\n")
 	for fn := p.fns; fn != nil; fn = fn.next {
@@ -230,8 +248,7 @@ func emitText(p *prog) {
 		fmt.Printf("  sub rsp, %d\n", fn.stackSize)
 		i := 0
 		for vl := fn.params; vl != nil; vl = vl.next {
-			v := vl.v
-			fmt.Printf("  mov [rbp-%d], %s\n", v.offset, argreg[i])
+			loadArg(vl.v, i)
 			i++
 		}
 		for n := fn.node; n != nil; n = n.next {
