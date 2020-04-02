@@ -238,6 +238,61 @@ func isReserved(c rune) bool {
 	}
 }
 
+func getEscapeChar(c rune) rune {
+	switch c {
+	case 'a':
+		return '\a'
+	case 'b':
+		return '\b'
+	case 't':
+		return '\t'
+	case 'n':
+		return '\n'
+	case 'v':
+		return '\v'
+	case 'f':
+		return '\f'
+	case 'r':
+		return '\r'
+	case 'e':
+		return 27
+	case '0':
+		return 0
+	}
+	return c
+}
+
+func readStrLit(cur *token, p []rune) *token {
+	s := p
+	p = p[1:]
+	l := 0
+	r := make([]rune, 0)
+	for {
+		c := p[0]
+		if l == 1024 {
+			errorAt(p, "string literal too large")
+		}
+		if c == 0 {
+			errorAt(p, "unclosed string literal")
+		}
+		if c == '"' {
+			break
+		}
+		if c == '\\' {
+			p = p[1:]
+			r = append(r, getEscapeChar(p[0]))
+			p = p[1:]
+		} else {
+			r = append(r, c)
+			p = p[1:]
+		}
+	}
+	tok := newToken(tkStr, cur, s, len(s)-len(p)+1)
+	tok.contents = append(r, 0)
+	tok.contLen = len(tok.contents)
+	return tok
+}
+
 func tokenize(p []rune) *token {
 	var h token
 	h.next = nil
@@ -271,18 +326,8 @@ func tokenize(p []rune) *token {
 			continue
 		}
 		if c == '"' {
-			q := p
-			p = p[1:]
-			for len(p) > 0 && p[0] != '"' {
-				p = p[1:]
-			}
-			if len(p) == 0 {
-				errorAt(q, "unclosed string literal")
-			}
-			cur = newToken(tkStr, cur, q, len(q)-len(p))
-			cur.contents = append(q[1:len(q)-len(p)], '\x00')
-			cur.contLen = len(q) - len(p)
-			p = p[1:]
+			cur = readStrLit(cur, p)
+			p = p[cur.len:]
 			continue
 		}
 		if isDigit(c) {
