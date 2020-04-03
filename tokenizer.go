@@ -340,6 +340,23 @@ func tokenize(p []rune) *token {
 			p = p[1:]
 			continue
 		}
+		if startWith(p, []rune("//")) {
+			p = p[2:]
+			for p[0] != '\n' {
+				p = p[1:]
+			}
+			continue
+		}
+		if startWith(p, []rune("/*")) {
+			for len(p) > 1 && !startWith(p, []rune("*/")) {
+				p = p[1:]
+			}
+			if len(p) < 2 {
+				errorAt(p, "unclosed block comment")
+			}
+			p = p[2:]
+			continue
+		}
 		kw := startWithReserved(p)
 		if kw != nil {
 			l := len(kw)
