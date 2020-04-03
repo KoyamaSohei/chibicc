@@ -27,13 +27,31 @@ type token struct {
 }
 
 var (
-	t    = &token{}
-	inpt = ""
+	t        = &token{}
+	filename = ""
+	inpt     = ""
 )
 
 func errorAt(loc []rune, f string, r ...[]rune) {
-	p := len(loc) - len(inpt)
-	e := fmt.Errorf(inpt)
+	k := []rune(inpt)
+	line := 1
+	buf := make([]rune, 0)
+	for len(k) > 0 {
+		if k[0] == '\n' {
+			if len(k) <= len(loc)+2 {
+				break
+			}
+			line++
+			buf = make([]rune, 0)
+		} else {
+			buf = append(buf, k[0])
+		}
+		k = k[1:]
+	}
+	e := fmt.Errorf("%s:%d", filename, line)
+	fmt.Fprintln(os.Stderr, e)
+	p := len(buf)
+	e = fmt.Errorf(string(buf))
 	fmt.Fprintln(os.Stderr, e)
 	e = fmt.Errorf("%*s", p, "")
 	fmt.Fprint(os.Stderr, e)

@@ -26,7 +26,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
 	}
-	s := readFile(os.Args[1])
+	filename = os.Args[1]
+	s := readFile(filename)
 	inpt = s
 	t = tokenize([]rune(s))
 	p := program()
